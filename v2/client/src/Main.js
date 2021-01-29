@@ -28,6 +28,7 @@ function Main(props) {
 	const [anonymity, setAnonymity] = useState('A');
 	const [qid, setQid] = useState(QUESTION_LIST);
 	const [drawing, setDrawing] = useState(false);
+	const [showTempDrawingBtn, setShowTempDrawingBtn] = useState(true);
 	const [chatToModify, setChatToModify] = useState({});
 	const canvasComponentRef = useRef(null); // this ref is used to read canvas data from chat area
 	const [isInstructorView, setIsInstructorView] = useState(true);
@@ -89,52 +90,60 @@ function Main(props) {
 	 * Go to the next page of slide, should fetch the url and the chat threads list of the new page
 	 */
 	const nextPage = () => {
-		if (page >= pageTotal) return;
-		let newPageNum = page + 1;
-		setQid(QUESTION_LIST);
-		applyPage(newPageNum);
-		setDrawingOverlay(false);
+		gotoPage(page + 1);
 	};
 
 	/**
 	 * Go to the previous page of slide, should fetch the url and the chat threads list of the new page
 	 */
 	const prevPage = () => {
-		if (page < 2) return;
-		let newPageNum = page - 1;
-		setQid(QUESTION_LIST);
-		applyPage(newPageNum);
-		setDrawingOverlay(false);
+		gotoPage(page - 1);
 	};
 
 	/**
-	 * go to the page the page the user entered iff it is a valid page
+	 * Go to the page user entered in the input
 	 */
-	const gotoPage = () => {
+	const gotoInputPage = () => {
 		let newPageNum = +document.getElementById('pageNum').value;
 		if (!Number.isInteger(newPageNum)) {
 			document.getElementById('pageNum').value = page;
 			return;
 		}
-		if (newPageNum > pageTotal) {
-			newPageNum = pageTotal;
-		} else if (newPageNum < 1) {
-			newPageNum = 1;
+		gotoPage(newPageNum);
+	};
+
+	/**
+	 * Go to the page pageNum iff it is a valid page
+	 */
+	const gotoPage = (pageNum) => {
+		if (pageNum > pageTotal) {
+			pageNum = pageTotal;
+		} else if (pageNum < 1) {
+			pageNum = 1;
 		}
-		setDrawingOverlay(false);
-		setQid(QUESTION_LIST);
-		applyPage(newPageNum);
+		if (pageNum === page) return;
+		if (qid !== QUESTION_LIST) {
+			setQid(QUESTION_LIST);
+			setDrawing(false);
+			setDrawingOverlay(false);
+			setShowTempDrawingBtn(true);
+		} else if (drawing) {
+			canvasComponentRef.current.clear();
+		}
+		applyPage(pageNum);
 	};
 
 	const gotoQuestion = (pageNum, qid) => {
 		applyPage(pageNum);
 		setQid(qid);
+		setShowTempDrawingBtn(false);
 	};
 
 	const gotoNewQuestion = () => {
 		setQid(NEW_QUESTION);
 		setDrawingOverlay(false);
 		setDrawing(false);
+		setShowTempDrawingBtn(false);
 	};
 
 	const goToModify = (chat, cid) => {
@@ -152,7 +161,9 @@ function Main(props) {
 			setQid(QUESTION_LIST);
 			setDrawingOverlay(false);
 			window.history.replaceState(null, null, `${baseURL}/${sid}/${page}`);
+			setShowTempDrawingBtn(true);
 		}
+		setDrawing(false);
 	};
 
 	const startDrawing = (e) => {
@@ -187,9 +198,15 @@ function Main(props) {
 					nextPage={nextPage}
 					prevPage={prevPage}
 					gotoPage={gotoPage}
+					gotoInputPage={gotoInputPage}
 					drawingOverlay={drawingOverlay}
+					drawing={drawing}
+					showTempDrawingBtn={showTempDrawingBtn}
+					startDrawing={startDrawing}
+					cancelDrawing={cancelDrawing}
 					canvasComponentRef={canvasComponentRef}
 					isInstructor={isInstructor}
+					isInstructorView={isInstructorView}
 				/>
 				<div className='chat-area'>
 					{qid === QUESTION_LIST ? (
@@ -219,6 +236,7 @@ function Main(props) {
 					) : (
 						<QuestionDetails
 							sid={sid}
+							filename={filename}
 							pageNum={page}
 							qid={qid}
 							uid={uid}
@@ -226,7 +244,9 @@ function Main(props) {
 							username={username}
 							isInstructor={isInstructor}
 							drawable={drawable}
+							setDrawing={setDrawing}
 							setDrawingOverlay={setDrawingOverlay}
+							setShowTempDrawingBtn={setShowTempDrawingBtn}
 							canvasComponentRef={canvasComponentRef}
 							goToModify={goToModify}
 							back={back}

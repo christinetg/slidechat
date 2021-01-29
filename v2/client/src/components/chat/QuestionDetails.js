@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Button, TextField } from '@material-ui/core';
+import { Button, Snackbar, TextField } from '@material-ui/core';
+
 import markdownIt from 'markdown-it';
 import markdownItMathJax from 'markdown-it-mathjax';
 import highlight from 'highlight.js';
@@ -27,10 +28,14 @@ md.use(markdownItMathJax());
 export default function QuestionDetails(props) {
 	const [managing, setManaging] = useState(false);
 	const [messages, setMessages] = useState({ title: 'Loading...', chats: [] });
+	const [showToast, setShowToast] = useState(false);
 	const chatRef = useRef(null);
 
 	useEffect(() => {
 		fetchQuestionDetails();
+		props.setDrawingOverlay(false);
+		props.setDrawing(false);
+		props.setShowTempDrawingBtn(false);
 		// eslint-disable-next-line
 	}, [props.sid, props.pageNum, props.qid]);
 
@@ -122,11 +127,23 @@ export default function QuestionDetails(props) {
 			});
 	};
 
+	const showOrHideToast = () => {
+		setShowToast(!showToast);
+	};
+
+	const copyLink = async () => {
+		if (!navigator.clipboard) return alert('Your browser does not support accessing clipboard!');
+		await navigator.clipboard.writeText(
+			`[@${props.filename}/Page ${props.pageNum}/Q${props.qid}](${window.location.href})`
+		);
+		showOrHideToast();
+	};
+
 	return (
 		<>
 			<ChatAreaTitle
 				title={messages.title}
-				showManage={props.isInstructor}
+				showManage={props.isInstructor && props.isInstructorView}
 				managing={managing}
 				toggleManaging={toggleManaging}
 				showBackBtn={true}
@@ -136,9 +153,16 @@ export default function QuestionDetails(props) {
 				<div className='title' key={-2}>
 					{messages.title}
 				</div>
+				<Snackbar
+					className='toast'
+					anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+					open={showToast}
+					onClose={showOrHideToast}
+					autoHideDuration={2500}
+					message='Link copied to clipboard!'
+				/>
 				{messages.chats.map((message, i) => {
 					if (!message) return null;
-
 					return (
 						<div className='chat' key={i}>
 							<div className='info'>
@@ -153,6 +177,14 @@ export default function QuestionDetails(props) {
 									</span>
 								</div>
 								<div className='icons'>
+									{i === 0 ? (
+										<span
+											className='material-icons icon quote'
+											title='quote this question'
+											onClick={copyLink}>
+											link
+										</span>
+									) : null}
 									{message.endorsement.length ? (
 										<span className='material-icons endorsed icon' onClick={(e) => endorseChat(i)}>
 											verified
